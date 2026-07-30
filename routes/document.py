@@ -8,7 +8,12 @@ from services.document import get_document_path, DOCUMENT_DIR, add_document, del
 from database.crud.document import get_all_documents, search_documents
 from schemas import document
 from database.database import get_db
+import os
+from dotenv import load_dotenv
 
+load_dotenv(override=True)
+
+IMAGE_DIRECTORY = Path(os.getenv("IMAGE_DIRECTORY"))
 
 router = APIRouter(
     prefix="/document",
@@ -95,3 +100,29 @@ def delete_document(
     return {
         "message": "Document deleted successfully."
     }
+
+@router.get("/images/{image_name}")
+def get_image(image_name: str):
+
+    image_path = IMAGE_DIRECTORY / image_name
+
+    if not image_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Image not found"
+        )
+
+    return FileResponse(image_path)
+
+@router.get("/images/{image_name}")
+def get_image(image_name: str):
+
+    image_path = IMAGE_DIRECTORY / image_name
+
+    if not image_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Image not found"
+        )
+
+    return FileResponse(image_path)

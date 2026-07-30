@@ -111,7 +111,7 @@ def ingest_new_document(document: list[Document]):
         raise
 
 def delete_document_vector(document_id:str):
-    client.delete(
+    operation = client.delete(
         collection_name=COLLECTION_NAME,
         points_selector=FilterSelector(
             filter=Filter(
@@ -124,6 +124,7 @@ def delete_document_vector(document_id:str):
             )
         )
     )
+    print(operation)
 
 
 # if __name__ == "__main__" :

@@ -7,7 +7,7 @@ from time import perf_counter
 
 from dotenv import load_dotenv
 
-from schemas.chat import ChatRequest, ChatResponse
+from schemas.chat import ChatRequest, ChatResponse, LLMResponse
 
 from services import conversation as conversation_service
 from services import message as message_service
@@ -44,6 +44,16 @@ Rules:
 - Do not reproduce large portions of the context unnecessarily.
 
 Prioritize factual grounding while providing the most complete answer supported by the available context.
+
+After answering, also return references using the required structured output.
+
+Reference rules:
+- Include only documents that were actually used to answer the question.
+- For each document, include only image identifiers that are relevant to the answer.
+- Image identifiers appear in the context as placeholders in the format:
+  [Figure: image_filename]
+- Do not invent document names or image identifiers.
+- If no document is used, return an empty references list.
 """
 
 SYSTEM_PROMPT = """
@@ -71,7 +81,8 @@ Rules:
 def build_context(results) -> str:
     return "\n\n---\n\n".join(
         f"""
-Source: {point.payload["document_name"]}
+===== SOURCE =====
+Document: {point.payload["document_name"]}
 Chunk: {point.payload["chunk_id"]}
 
 {point.payload["text"]}
@@ -188,10 +199,11 @@ def chat(
 
     llm_started = perf_counter()
 
-    response = OPENAI.chat.completions.create(
+    response = OPENAI.responses.parse(
         model=MODEL,
-        messages=messages,
-        max_tokens=2048,
+        input=messages,
+        text_format=LLMResponse,
+        max_output_tokens=2048,
         temperature=0,
         extra_body={
             "chat_template_kwargs": {
@@ -202,7 +214,7 @@ def chat(
 
     llm_seconds = perf_counter() - llm_started
 
-    answer = response.choices[0].message.content or ""
+    answer = response.output_parsed or ""
 
     # ------------------------------------------------------------------
     # Save Conversation
@@ -219,7 +231,7 @@ def chat(
         db=db,
         conversation_id=conversation.id,
         role="assistant",
-        content=answer
+        content=answer.answer,
     )
 
     generated_seconds = perf_counter() - total_started
@@ -232,8 +244,9 @@ def chat(
         "generated_seconds": round(generated_seconds, 2),
     })
 
+
     return ChatResponse(
         conversation_id=conversation.id,
-        answer=answer,
-        source=results
+        answer=answer.answer,
+        references=answer.references
     )

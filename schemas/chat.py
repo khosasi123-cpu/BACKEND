@@ -4,7 +4,15 @@ class ChatRequest(BaseModel):
     conversation_id: int | None = None
     question: str
 
-class ChatResponse(BaseModel):
-    conversation_id: int
+class ReferenceResponse(BaseModel):
+    document_name: str
+    images: list[str] = []
+
+class LLMResponse(BaseModel):
     answer: str
-    source: list[str]
+    references: list[ReferenceResponse]
+
+class ChatResponse(LLMResponse):
+    conversation_id: int
+    
+
