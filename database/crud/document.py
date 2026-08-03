@@ -74,17 +74,26 @@ def get_document_by_name(
 
 
 def get_all_documents(
-    db: Session
-) -> list[Document]:
+    db: Session,
+    page: int = 1,
+    page_size: int = 10
+) -> dict:
     """
     Get all documents.
     """
-
-    return (
+    offset = (page - 1) * page_size
+    total = db.query(Document).count()
+    items =(
         db.query(Document)
         .order_by(Document.document_name)
+        .offset(offset)
+        .limit(page_size)
         .all()
     )
+    return {
+        "total": total,
+        "items": items
+    }
 
 
 def delete_document_db(
@@ -99,15 +108,32 @@ def delete_document_db(
     db.commit()
 
 def search_documents(
+    page: int,
+    page_size: int,
     db: Session,
     keyword: str
-) -> list[Document]:
+) -> dict:
 
-    return (
+    offset = (page - 1) * page_size
+
+    items = (
         db.query(Document)
         .filter(
             Document.document_name.ilike(f"%{keyword}%")
         )
         .order_by(Document.document_name)
+        .offset(offset)
+        .limit(page_size)
         .all()
     )
+    total = (
+        db.query(Document)
+        .filter(
+            Document.document_name.ilike(f"%{keyword}%")
+        )
+        .count()
+    )
+    return {
+        "total": total,
+        "items": items
+    }
