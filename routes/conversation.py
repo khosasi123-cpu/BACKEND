@@ -55,9 +55,9 @@ def get_conversation(
     "/{conversation_id}",
     response_model=ConversationResponse
 )
-def update_conversation_title(
+def update_conversation(
     conversation_id: int,
-    request: ConversationUpdateRequest,
+    payload: ConversationUpdateRequest,
     db: Session = Depends(get_db)
 ):
     """
@@ -67,7 +67,7 @@ def update_conversation_title(
     return conversation_service.update_conversation_title(
         db=db,
         conversation_id=conversation_id,
-        title=request.title
+        title=payload.title
     )
 
 
@@ -86,8 +86,4 @@ def delete_conversation(
     conversation_service.delete_conversation(
         db=db,
         conversation_id=conversation_id
-    )
-
-    return Response(
-        status_code=status.HTTP_204_NO_CONTENT
     )

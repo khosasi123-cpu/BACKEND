@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from database.model.conversation import Conversation
-from database.model.message import Message
+
 
 from database.crud import conversation as conversation_crud
 from database.crud import messages as message_crud
