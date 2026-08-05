@@ -339,7 +339,7 @@ class _ImageExtractor:
             )
         )
 
-        return f"[Figure: {Path(filename).stem}]\n\nImage Description:\n<empty>"
+        return f"[Figure: {Path(filename)}]\n\nImage Description:\n<empty>"
 
     ## Membuat nama file gambar berurutan yang belum ada di folder output agar
     ## file lama tidak tertimpa ketika parser dijalankan berulang.
@@ -362,5 +362,5 @@ def write_markdown(parsed_docx : ParsedDocx,
     return output_path
 
 if __name__ == "__main__":
-    parsed = parse_docx("test.docx")
+    parsed = parse_docx("C:\\Users\\User\\Downloads\\test.docx")
     write_markdown(parsed)
