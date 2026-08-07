@@ -82,12 +82,12 @@ def build_context(results) -> str:
     return "\n\n---\n\n".join(
         f"""
 ===== SOURCE =====
-Document: {point.payload["document_name"]}
-Chunk: {point.payload["chunk_id"]}
+Document: {chunk.document.document_name}
+Chunk: {chunk.id}
 
-{point.payload["text"]}
+{chunk.text}
 """
-        for point, _ in results
+        for chunk, _ in results
     )
 
 
@@ -148,7 +148,7 @@ def chat(
         )
     })
 
-    results: list[str] = []
+    
 
     # ------------------------------------------------------------------
     # Retrieval
@@ -163,7 +163,7 @@ def chat(
 
         retrieval_started = perf_counter()
 
-        docs = retrieval(query)
+        docs = retrieval(db=db, question=query)
 
         retrieval_seconds = perf_counter() - retrieval_started
 
@@ -175,10 +175,7 @@ def chat(
         system_prompt = RAG_SYSTEM_PROMPT
         user_content = context
 
-        results = list({
-            point.payload["document_name"]
-            for point, _ in docs
-        })
+        
 
     else:
 

@@ -45,11 +45,11 @@ def add_document(db : Session, document_name: str):
     )
     document = [Document(
         page_content =doc.text,
-        metadata = {"source" : document_name,
+        metadata = {
                     "document_name" : document_name,
                     "document_id" : document_db.id}
     )]
-    ingest_new_document(document)
+    ingest_new_document(db=db, document=document)
     # TODO:
     # Implement compensating transaction to clean up
     # database, vector store, images, and files when

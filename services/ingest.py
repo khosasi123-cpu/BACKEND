@@ -8,6 +8,11 @@ from pathlib import Path
 import glob
 import os
 from dotenv import load_dotenv
+from sqlalchemy.orm import Session
+import random
+
+from database.model.chunk import Chunk
+from database.crud.chunk import create_chunks
 
 load_dotenv(override=True)
 QDRANT_HOST = os.getenv("QDRANT_HOST")
@@ -45,19 +50,52 @@ def init_vector_db():
 #     print(f"jumlah documnet yang di load : {len(documents)}")
 #     return documents
 
-def create_chunk(documnets):
-    chunk_counter = {}
-    splitter = RecursiveCharacterTextSplitter(chunk_size = 1000, chunk_overlap=200)
-    chunks = splitter.split_documents(documnets)
-    for chunk in chunks:
-        doc_name = chunk.metadata["document_name"]
-        if doc_name not in chunk_counter:
-            chunk_counter[doc_name] = 0
-        chunk.metadata["chunk_index"] = chunk_counter[doc_name]
-        chunk_counter[doc_name] += 1
+def create_chunk(
+    db: Session,
+    documents: list[Document]
+) -> list[Document]:
 
-    print(f"jumlah chunk {len(chunks)}")
+    chunk_counter = {}
+    chunk_models = []
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=300
+    )
+
+    chunks = splitter.split_documents(documents)
+
+    for chunk in chunks:
+
+        document_id = chunk.metadata["document_id"]
+
+        if document_id not in chunk_counter:
+            chunk_counter[document_id] = 0
+
+        chunk_index = chunk_counter[document_id]
+
+        chunk.metadata["chunk_index"] = chunk_index
+        chunk.metadata["chunk_id"] = f"{document_id}:{chunk_index}"
+
+        chunk_models.append(
+            Chunk(
+                id=chunk.metadata["chunk_id"],
+                document_id=document_id,
+                chunk_index=chunk_index,
+                text=chunk.page_content
+            )
+        )
+
+        chunk_counter[document_id] += 1
+
+    create_chunks(
+        db=db,
+        chunks=chunk_models
+    )
+    print(f"jumlah chunk yang di buat : {len(chunk_models)}")
     return chunks
+
+
 
 def create_vector(chunks):
     texts = [c.page_content for c in chunks]
@@ -67,27 +105,16 @@ def create_vector(chunks):
     return vectors
 
 def create_point(chunks , vectors):
-    current_count = client.count(
-    collection_name=COLLECTION_NAME,
-    exact=True
-    ).count
     points = []
     for idx, (chunk, vector) in enumerate(zip(chunks, vectors)):
 
         payload = {
             "document_id": chunk.metadata["document_id"],
-            "source": chunk.metadata["source"],
-            "document_name": chunk.metadata["document_name"],
-            "chunk_index": chunk.metadata["chunk_index"],
-            "chunk_id": (
-                f"{chunk.metadata['document_name']}:"
-                f"{chunk.metadata['chunk_index']}"
-            ),
-            "text": chunk.page_content,
+            "chunk_id": chunk.metadata["chunk_id"],
         }
 
         point = PointStruct(
-            id = current_count + idx,
+            id = random.getrandbits(64), # generate unique id for each point
             vector=vector.tolist(), # perlu tolist agar sebelumnya dari arralu numpy jadi list python yang di mau qdrant
             payload=payload
         )
@@ -99,8 +126,8 @@ def insert_to_qdrant(points):
                   points=points,
                   )
 
-def ingest_new_document(document: list[Document]):
-    chunk = create_chunk(document)
+def ingest_new_document(db: Session, document: list[Document]):
+    chunk = create_chunk(db=db, documents=document)
     vector = create_vector(chunk)
     point = create_point(chunk, vector)
     try: 
