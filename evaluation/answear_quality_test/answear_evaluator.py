@@ -8,11 +8,13 @@ from uuid import uuid4
 from dotenv import load_dotenv
 import os
 from openai import OpenAI
+from sqlalchemy.orm import Session
 
 from evaluation.answear_quality_test.answear_loader import TestQuestion, load_tests
 from services.retrieval import retrieval
 from services.chat import chat
 from schemas.chat import ChatRequest
+from database.database import SessionLocal
 
 
 load_dotenv(override=True)
@@ -85,7 +87,7 @@ def calculate_ndcg(keyword: str, retrieved_docs: list, k: int = 10) -> float:
     return dcg / idcg if idcg > 0 else 0.0
 
 
-def evaluate_retrieval(test: TestQuestion, k: int = 10) -> RetrievalEval:
+def evaluate_retrieval(db: Session, test: TestQuestion, k: int = 10) -> RetrievalEval:
     """
     Evaluate retrieval performance for a test question.
 
@@ -97,8 +99,8 @@ def evaluate_retrieval(test: TestQuestion, k: int = 10) -> RetrievalEval:
         RetrievalEval object with MRR, nDCG, and keyword coverage metrics
     """
     # Retrieve documents using shared answer module
-    retrieved = retrieval(test.question)
-    retrieved_docs = [points.payload["text"] for points, score in retrieved]
+    retrieved = retrieval(db=db, question=test.question)
+    retrieved_docs = [chunk.text for chunk, score in retrieved]
 
     # Calculate MRR (average across all keywords)
     mrr_scores = [calculate_mrr(keyword, retrieved_docs) for keyword in test.keywords]
@@ -122,7 +124,7 @@ def evaluate_retrieval(test: TestQuestion, k: int = 10) -> RetrievalEval:
     )
 
 
-def evaluate_answer(test: TestQuestion) -> tuple[AnswerEval, str, list]:
+def evaluate_answer(db : Session, test: TestQuestion) -> tuple[AnswerEval, str, list]:
     """
     Evaluate answer quality using LLM-as-a-judge (async).
 
@@ -136,10 +138,10 @@ def evaluate_answer(test: TestQuestion) -> tuple[AnswerEval, str, list]:
     response = chat(ChatRequest(
         question=test.question,
         session_id=str(uuid4())
-    ))
+    ), db=db)
 
-    generated_answer = response["answear"]
-    retrieved_docs = response["source"]
+    generated_answer = response.answer
+    retrieved_docs = response.references
 
     # LLM judge prompt
     judge_messages = [
@@ -188,23 +190,30 @@ Provide detailed feedback and scores from 1 (very poor) to 5 (ideal) for each di
 
 def evaluate_all_retrieval():
     """Evaluate all retrieval tests."""
-    tests = load_tests()
-    total_tests = len(tests)
-    for index, test in enumerate(tests):
-        result = evaluate_retrieval(test)
-        progress = (index + 1) / total_tests
-        yield test, result, progress
+    db = SessionLocal()
+    try:
+        tests = load_tests()
+        total_tests = len(tests)
+        for index, test in enumerate(tests):
+            result = evaluate_retrieval(db=db, test=test)
+            progress = (index + 1) / total_tests
+            yield test, result, progress
+    finally:
+        db.close()
 
 
 def evaluate_all_answers():
     """Evaluate all answers to tests using batched async execution."""
-    tests = load_tests()
-    total_tests = len(tests)
-    for index, test in enumerate(tests):
-        result = evaluate_answer(test)[0]
-        progress = (index + 1) / total_tests
-        yield test, result, progress
-
+    db = SessionLocal()
+    try:
+        tests = load_tests()
+        total_tests = len(tests)
+        for index, test in enumerate(tests):
+            result = evaluate_answer(db=db, test=test)[0]
+            progress = (index + 1) / total_tests
+            yield test, result, progress
+    finally:
+        db.close()
 
 def run_cli_evaluation(test_number: int):
     """Run evaluation for a specific test (async helper for CLI)."""

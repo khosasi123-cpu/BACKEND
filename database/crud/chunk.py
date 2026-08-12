@@ -1,4 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
+from database.model.document import Document
+from database.model.document_image import DocumentImage
+
 
 
 from database.model.chunk import Chunk
