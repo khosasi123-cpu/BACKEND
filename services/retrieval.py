@@ -6,6 +6,7 @@ from time import perf_counter
 from sqlalchemy.orm import Session
 
 from database.crud.chunk import get_chunks_by_ids
+from services.ingest import embedding
 
 
 load_dotenv(override=True)
@@ -17,8 +18,7 @@ RERANKER_MODEL = os.getenv("RERANKER_MODEL")
 LIMIT = int(os.getenv("LIMIT"))
 RERANK_TOP_K = int(os.getenv("RERANK_TOP_K"))
 
-reranker = CrossEncoder(RERANKER_MODEL, device="cpu", local_files_only=True)
-embedding = SentenceTransformer(EMBEDDING_MODEL, device="cpu", local_files_only=True)
+reranker = CrossEncoder(RERANKER_MODEL, device="cuda", local_files_only=True)
 client = QdrantClient(port=QDRANT_PORT, location=QDRANT_HOST)
 
 collection = COLLECTION_NAME
@@ -36,7 +36,7 @@ def retrieval(db : Session, question : str) -> list:
         list[dict]: list of retrivead chunks
     """
     start = perf_counter()
-    vector = embedding.encode(question, normalize_embeddings=True)
+    vector = embedding.encode(question, prompt_name="query", normalize_embeddings=True)
     embedding_time = perf_counter() - start
     qdrant_start = perf_counter()
     result = client.query_points(collection_name=COLLECTION_NAME, 

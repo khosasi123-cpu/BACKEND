@@ -202,11 +202,6 @@ def chat(
         text_format=LLMResponse,
         max_output_tokens=2048,
         temperature=0,
-        extra_body={
-            "chat_template_kwargs": {
-                "enable_thinking": False
-            }
-        }
     )
 
     llm_seconds = perf_counter() - llm_started

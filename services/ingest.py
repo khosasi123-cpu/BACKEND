@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 import random
 
+import torch
+
 from database.model.chunk import Chunk
 from database.crud.chunk import create_chunks
 
@@ -23,7 +25,7 @@ BASE_FOLDER = Path(__file__).parent.parent / "data"
 #FOLDERS = [p for p in BASE_FOLDER.iterdir() if p.is_dir()]
 
 #load embeddingt model
-embedding = SentenceTransformer(EMBEDDING_MODEL, device="cpu", local_files_only=True)
+embedding = SentenceTransformer(EMBEDDING_MODEL, device="cuda", local_files_only=False, model_kwargs={"dtype": torch.bfloat16})
 
 #crete collection
 client = QdrantClient(host=QDRANT_HOST, port= QDRANT_PORT)
@@ -99,7 +101,7 @@ def create_chunk(
 
 def create_vector(chunks):
     texts = [c.page_content for c in chunks]
-    vectors = embedding.encode(texts, normalize_embeddings=True, show_progress_bar=True)
+    vectors = embedding.encode(texts, prompt_name="query", normalize_embeddings=True, show_progress_bar=True)
     print(f"jumlah chunk yang di embedding ada :{len(vectors)}")
     print(f"tiap chunk punya {len(vectors[0])} dimensi")
     return vectors

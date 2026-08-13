@@ -74,8 +74,7 @@ def router(question, history):
     model=MODEL,
     input=messages,
     text_format=RouterResponse,
-    temperature=0,
-    extra_body={"chat_template_kwargs": {"enable_thinking": False}}
+    temperature=0
     )
     return response.output_parsed
 

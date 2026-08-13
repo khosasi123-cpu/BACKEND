@@ -19,7 +19,7 @@ from database.database import SessionLocal
 
 load_dotenv(override=True)
 
-MODEL = "Qwen/Qwen3.5-4B"
+MODEL = "mistralai/Ministral-3-8B-Instruct-2512"
 base_url = "http://localhost:8000/v1"
 api_key = os.getenv("OPENAI_API_KEY")
 OPENAI = OpenAI(base_url=base_url, api_key=api_key)
