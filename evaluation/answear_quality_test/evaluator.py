@@ -43,7 +43,7 @@ def get_color(value: float, metric_type: str) -> str:
             return "orange"
         else:
             return "red"
-    elif metric_type in ["accuracy", "completeness", "relevance"]:
+    elif metric_type in ["adequacy", "fluency", "terminology"]:
         if value >= ANSWER_GREEN:
             return "green"
         elif value >= ANSWER_AMBER:
@@ -125,34 +125,34 @@ def run_retrieval_evaluation(progress=gr.Progress()):
 
 def run_answer_evaluation(progress=gr.Progress()):
     """Run answer evaluation and yield updates (async)."""
-    total_accuracy = 0.0
-    total_completeness = 0.0
-    total_relevance = 0.0
-    category_accuracy = defaultdict(list)
+    total_adequacy = 0.0
+    total_fluency = 0.0
+    total_terminology = 0.0
+    category_adequacy = defaultdict(list)
     count = 0
 
     for test, result, prog_value in evaluate_all_answers():
         count += 1
-        total_accuracy += result.accuracy
-        total_completeness += result.completeness
-        total_relevance += result.relevance
+        total_adequacy += result.adequacy
+        total_fluency += result.fluency
+        total_terminology += result.terminology
 
-        category_accuracy[test.category].append(result.accuracy)
+        category_adequacy[test.category].append(result.adequacy)
 
         # Update progress bar only
         progress(prog_value, desc=f"Evaluating test {count}...")
 
     # Calculate final averages
-    avg_accuracy = total_accuracy / count
-    avg_completeness = total_completeness / count
-    avg_relevance = total_relevance / count
+    avg_adequacy = total_adequacy / count
+    avg_fluency = total_fluency / count
+    avg_terminology = total_terminology / count
 
     # Create final summary metrics HTML
     final_html = f"""
     <div style="padding: 0;">
-        {format_metric_html("Accuracy", avg_accuracy, "accuracy", score_format=True)}
-        {format_metric_html("Completeness", avg_completeness, "completeness", score_format=True)}
-        {format_metric_html("Relevance", avg_relevance, "relevance", score_format=True)}
+        {format_metric_html("Adequacy", avg_adequacy, "adequacy", score_format=True)}
+        {format_metric_html("Fluency", avg_fluency, "fluency", score_format=True)}
+        {format_metric_html("Terminology", avg_terminology, "terminology", score_format=True)}
         <div style="margin-top: 20px; padding: 10px; background-color: #d4edda; border-radius: 5px; text-align: center; border: 1px solid #c3e6cb;">
             <span style="font-size: 14px; color: #155724; font-weight: bold;">✓ Evaluation Complete: {count} tests</span>
         </div>
@@ -161,9 +161,9 @@ def run_answer_evaluation(progress=gr.Progress()):
 
     # Create final bar chart data
     category_data = []
-    for category, accuracy_scores in category_accuracy.items():
-        avg_cat_accuracy = sum(accuracy_scores) / len(accuracy_scores)
-        category_data.append({"Category": category, "Average Accuracy": avg_cat_accuracy})
+    for category, adequacy_scores in category_adequacy.items():
+        avg_cat_adequacy = sum(adequacy_scores) / len(adequacy_scores)
+        category_data.append({"Category": category, "Average Adequacy": avg_cat_adequacy})
 
     df = pd.DataFrame(category_data)
 
@@ -212,8 +212,8 @@ def main():
             with gr.Column(scale=1):
                 answer_chart = gr.BarPlot(
                     x="Category",
-                    y="Average Accuracy",
-                    title="Average Accuracy by Category",
+                    y="Average Adequacy",
+                    title="Average Adequacy by Category",
                     y_lim=[1, 5],
                     height=400,
                 )

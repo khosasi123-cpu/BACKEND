@@ -35,19 +35,41 @@ class RetrievalEval(BaseModel):
 
 
 class AnswerEval(BaseModel):
-    """LLM-as-a-judge evaluation of answer quality."""
+    """LLM-as-a-judge evaluation of English-to-Indonesian translation quality."""
 
     feedback: str = Field(
-        description="Concise feedback on the answer quality, comparing it to the reference answer and evaluating based on the retrieved context"
+        description=(
+            "Concise feedback comparing the Indonesian translation "
+            "with the English source and reference translation."
+        )
     )
-    accuracy: float = Field(
-        description="How factually correct is the answer compared to the reference answer? 1 (wrong. any wrong answer must score 1) to 5 (ideal - perfectly accurate). An acceptable answer would score 3."
+
+    adequacy: float = Field(
+        description=(
+            "How accurately does the Indonesian translation preserve "
+            "the meaning of the English source? "
+            "1 = major mistranslation or missing meaning, "
+            "5 = meaning is fully preserved."
+        )
     )
-    completeness: float = Field(
-        description="How complete is the answer in addressing all aspects of the question? 1 (very poor - missing key information) to 5 (ideal - all the information from the reference answer is provided completely). Only answer 5 if ALL information from the reference answer is included."
+
+    fluency: float = Field(
+        description=(
+            "How natural, grammatical, clear, and professional is the "
+            "Indonesian translation? "
+            "1 = very unnatural or difficult to understand, "
+            "5 = natural and professionally written Indonesian."
+        )
     )
-    relevance: float = Field(
-        description="How relevant is the answer to the specific question asked? 1 (very poor - off-topic) to 5 (ideal - directly addresses question and gives no additional information). Only answer 5 if the answer is completely relevant to the question and gives no additional information."
+
+    terminology: float = Field(
+        description=(
+            "How correctly does the translation handle technical terminology, "
+            "product names, error codes, commands, acronyms, numbers, paths, "
+            "and other domain-specific identifiers? "
+            "1 = major terminology errors, "
+            "5 = technical terminology and identifiers are correctly preserved."
+        )
     )
 
 
@@ -146,28 +168,43 @@ def evaluate_answer(db : Session, test: TestQuestion) -> tuple[AnswerEval, str, 
     # LLM judge prompt
     judge_messages = [
         {
-            "role": "system",
-            "content": "You are an expert evaluator assessing the quality of answers. Evaluate the generated answer by comparing it to the reference answer. Only give 5/5 scores for perfect answers.",
-        },
-        {
-            "role": "user",
-            "content": f"""Question:
-{test.question}
+                "role": "system",
+                "content": """
+        You are an expert evaluator for English-to-Indonesian technical translation.
 
-Generated Answer:
-{generated_answer}
+        Evaluate the generated translation against the English source and reference
+        translation. Score each dimension from 1 to 5.
 
-Reference Answer:
-{test.reference_answer}
+        Adequacy: How accurately does the translation preserve the source meaning?
+        Penalize mistranslation, missing meaning, changed meaning, or invented meaning.
 
-Please evaluate the generated answer on three dimensions:
-1. Accuracy: How factually correct is it compared to the reference answer? Only give 5/5 scores for perfect answers.
-2. Completeness: How thoroughly does it address all aspects of the question, covering all the information from the reference answer?
-3. Relevance: How well does it directly answer the specific question asked, giving no additional information?
+        Fluency: How natural, grammatical, clear, and professional is the Indonesian?
+        Do not penalize valid technical wording.
 
-Provide detailed feedback and scores from 1 (very poor) to 5 (ideal) for each dimension. If the answer is wrong, then the accuracy score must be 1.""",
-        },
-    ]
+        Terminology: How correctly are technical terms, product names, error codes,
+        commands, acronyms, numbers, paths, ports, and configuration values handled?
+        Technical identifiers should remain unchanged when appropriate.
+
+        Do not penalize differences in wording when the meaning is equivalent.
+        5 means essentially ideal.
+
+        Return only the requested structured evaluation.
+        """
+            },
+            {
+                "role": "user",
+                "content": f"""
+        English:
+        {test.question}
+
+        Generated:
+        {generated_answer}
+
+        Reference:
+        {test.reference_answer}
+        """
+            },
+        ]
 
     # Call LLM judge with structured outputs (async)
     response = OPENAI.responses.parse(
