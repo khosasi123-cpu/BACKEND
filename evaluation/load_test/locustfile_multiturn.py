@@ -6,15 +6,18 @@ from locust import HttpUser, between, task
 with open("translate.json", encoding="utf-8") as f:
             conversations = json.load(f)
 
+conversation_ids = list(range(1, 26))
+
+
 class ConversationUser(HttpUser):
-    host = "http://127.0.0.1:8000"
+    host = "http://127.0.0.1:8080"
 
     # Simulasikan user membaca jawaban sebelum bertanya lagi
     wait_time = between(5, 15)
 
     def on_start(self):
         # Satu session untuk satu percakapan
-        self.session_id = str(uuid.uuid4())
+        self.conversation_id = conversation_ids.pop()
 
         self.questions = random.choice(conversations)["questions"]
         # self.questions = conversations["questions"]  # Gunakan percakapan pertama untuk konsistensi
@@ -30,7 +33,7 @@ class ConversationUser(HttpUser):
             return
 
         payload = {
-            "session_id": self.session_id,
+            "conversation_id": self.conversation_id,
             "question": self.questions[self.index],
         }
 
@@ -54,7 +57,7 @@ class ConversationUser(HttpUser):
                 response.failure("Response is not valid JSON")
                 return
 
-            if not data.get("answear"):
+            if not data.get("answer"):
                 response.failure("Empty answer")
                 return
 
