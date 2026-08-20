@@ -17,7 +17,7 @@ class ConversationUser(HttpUser):
 
     def on_start(self):
         # Satu session untuk satu percakapan
-        self.conversation_id = conversation_ids.pop()
+        self.conversation_id = None
 
         self.questions = random.choice(conversations)["questions"]
         # self.questions = conversations["questions"]  # Gunakan percakapan pertama untuk konsistensi
@@ -59,6 +59,12 @@ class ConversationUser(HttpUser):
 
             if not data.get("answer"):
                 response.failure("Empty answer")
+                return
+
+            self.conversation_id = data.get("conversation_id")
+
+            if self.conversation_id is None:
+                response.failure("Missing conversation_id")
                 return
 
             # Berhasil
