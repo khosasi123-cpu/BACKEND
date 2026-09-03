@@ -5,8 +5,8 @@ from langchain_core.documents import Document
 from dotenv import load_dotenv
 import os
 
-from tools.docx_parser import parse_docx
-from tools.delete_images import delete_images, delete_file
+from tools.docx_parser.docx_parser import parse_docx
+from tools.docx_parser.delete_images import delete_images, delete_file
 from services.ingest import ingest_new_document, delete_document_vector
 from database.crud.document import create_document, create_document_images, get_document_by_id, get_document_by_name, delete_document_db
 

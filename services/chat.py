@@ -133,7 +133,8 @@ def chat(
 
     router_result = router(
         user_request.question,
-        history
+        history,
+        has_files=bool(user_request.file_ids)
     )
 
     router_seconds = perf_counter() - router_started
@@ -145,7 +146,8 @@ def chat(
             router_result.rewritten_query[:100]
             if router_result.rewritten_query
             else None
-        )
+        ),
+        "file_ids": user_request.file_ids
     })
 
     
@@ -154,7 +156,7 @@ def chat(
     # Retrieval
     # ------------------------------------------------------------------
 
-    if router_result.use_rag:
+    if router_result.route == "rag":
 
         query = (
             router_result.rewritten_query
@@ -174,6 +176,12 @@ def chat(
 
         system_prompt = RAG_SYSTEM_PROMPT
         user_content = context
+
+    #------------------------------------------------------------------
+    # PDF TRANSLATE
+    #------------------------------------------------------------------
+    elif router_result.route == "translate":
+        pass
 
         
 

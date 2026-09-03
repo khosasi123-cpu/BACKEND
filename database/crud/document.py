@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from database.model.document import Document
 from database.model.document_image import DocumentImage
-from tools.docx_parser import ExtractedImage
+from tools.docx_parser.docx_parser import ExtractedImage
 
 
 def create_document(

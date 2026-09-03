@@ -39,8 +39,8 @@ services:
 
     command: >
       --model mistralai/Ministral-3-8B-Instruct-2512
-      --tokenizer_mode mistral
-      --config_format mistral
+      --tokenizer_mode mistral 
+      --config_format mistral 
       --load_format mistral
       --host 0.0.0.0
       --port 8000

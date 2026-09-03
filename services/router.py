@@ -15,24 +15,20 @@ MODEL = os.getenv("MODEL")
 OPENAI = OpenAI(base_url=base_url, api_key=api_key)
 
 class RouterResponse(BaseModel):
-    use_rag: bool
+    route: Literal["rag", "chat", "translate"]
     rewritten_query: str | None = None
     
 
 
 router_prompt = """
 You are a routing assistant for an internal knowledge assistant.
-
 Return JSON only:
-
 {{
-  "use_rag": boolean,
+  "route": "chat" | "rag" | "translate",
   "rewritten_query": string | null
 }}
-
-Use RAG when the request requires information from internal documentation or the knowledge base.
-
-This includes questions about:
+Use "rag" when the request requires information from internal documentation
+or the knowledge base. This includes:
 - procedures or workflows
 - troubleshooting and errors
 - systems, applications, or features
@@ -40,27 +36,36 @@ This includes questions about:
 - policies, requirements, controls, or responsibilities
 - follow-up questions that require additional documented information
 
-Do NOT use RAG when the task can be completed using only user-provided text or conversation history.
+Use "translate" only if has_files is true AND the user explicitly asks to
+translate the attached file, with no other request requiring internal
+documentation. Never use "translate" if has_files is false, even if the user
+asks about translating a file.
 
-This includes:
+If the request combines file translation with something needing internal
+documentation (e.g. "translate this then explain per our policy"), use "rag"
+instead and rewrite the query around the documentation need.
+
+Use "chat" when the request can be completed using only user-provided text,
+conversation history, or general knowledge. This includes:
 - greetings, small talk, or thanks
-- translation
+- translation of text given directly in the conversation (not a file)
 - summarization or rewriting
 - formatting or markdown conversion
 - grammar correction
 - content generation that does not require internal documentation
 
 Rules:
-- If use_rag is true, rewrite the question as a standalone retrieval query.
+- If route is "rag", rewrite the question as a standalone retrieval query.
+- If route is "chat" or "translate", rewritten_query must be null.
 - Resolve references from conversation history when needed.
 - Preserve technical terms exactly.
 - Do not answer the question.
-- If use_rag is false, rewritten_query must be null.
 - Return JSON only.
 
 History:
 {history}
-
+Has attached files:
+{has_files}
 User:
 {question}
 """
@@ -68,8 +73,8 @@ User:
 
 
 
-def router(question, history):
-    messages = [{"role" : "system", "content" : router_prompt.format(history=history, question=question)}, {"role" : "user", "content" : question}]
+def router(question, history, has_files=False):
+    messages = [{"role" : "system", "content" : router_prompt.format(history=history, question=question, has_files=has_files)}, {"role" : "user", "content" : question}]
     response = OPENAI.responses.parse(
     model=MODEL,
     input=messages,
