@@ -1,4 +1,6 @@
 import shutil
+import os
+from dotenv import load_dotenv
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
@@ -8,8 +10,9 @@ from services.chat import chat as chat_with_AI
 from schemas.chat import ChatRequest, ChatResponse
 from pathlib import Path
 
+load_dotenv()
 
-TEMP_DIR = Path("./data/temp")
+TEMP_PATH = Path(os.getenv("TEMP_PATH"))
 
 router = APIRouter(
     prefix="/chat",
@@ -36,7 +39,7 @@ def create_chat(
         file_ids=file_ids,
     )
     for file, file_id  in zip(files, file_ids):
-        file_path = TEMP_DIR / file_id
+        file_path = TEMP_PATH / file_id
         file_path.mkdir(parents=True, exist_ok=True)
         input_file_path = file_path / "input.pdf"
         with open(input_file_path, "wb") as buffer:
@@ -46,7 +49,7 @@ def create_chat(
 @router.get("/download/{file_id}")
 def download_translated_file(file_id: str):
 
-    file_path = TEMP_DIR / file_id / "output.pdf"
+    file_path = TEMP_PATH / file_id / "input.id.mono.pdf"
 
     if not file_path.exists():
         raise HTTPException(

@@ -13,3 +13,4 @@ wheels/
 /qdrant_storage
 /storage
 knowledgeops.db
+/tools/babeldoc/offline

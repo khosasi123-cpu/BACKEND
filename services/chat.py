@@ -14,7 +14,7 @@ from services import conversation as conversation_service
 from services import message as message_service
 from services.retrieval import retrieval
 from services.router import router
-from tools.pdf_parser.pipeline import run_pipeline
+from tools.babeldoc.babeldoc import translate_pdf
 
 
 load_dotenv(override=True)
@@ -192,13 +192,11 @@ def chat(
             )
         for file_id in user_request.file_ids:
             input_file = str(TEMP_PATH / file_id / "input.pdf")
-            output_file = str(TEMP_PATH / file_id / "output.pdf")
+            output_dir = str(TEMP_PATH / file_id )
 
-            run_pipeline(
+            translate_pdf(
                 input_pdf=input_file,
-                output_pdf=output_file,
-                source_lang="english",
-                target_lang="indonesian"
+                output_dir=output_dir,
             )
 
             # Save conversation
