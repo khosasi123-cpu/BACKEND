@@ -1,6 +1,7 @@
 import shutil
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from database.database import get_db
 from services.chat import chat as chat_with_AI
@@ -41,3 +42,20 @@ def create_chat(
         with open(input_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
     return chat_with_AI(user_request, db)
+
+@router.get("/download/{file_id}")
+def download_translated_file(file_id: str):
+
+    file_path = TEMP_DIR / file_id / "output.pdf"
+
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Translated file not found"
+        )
+
+    return FileResponse(
+        path=file_path,
+        filename="translated.pdf",
+        media_type="application/pdf"
+    )

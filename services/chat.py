@@ -1,6 +1,7 @@
 from fastapi import HTTPException
 from openai import OpenAI
 from sqlalchemy.orm import Session
+from pathlib import Path
 
 import os
 from time import perf_counter
@@ -13,6 +14,7 @@ from services import conversation as conversation_service
 from services import message as message_service
 from services.retrieval import retrieval
 from services.router import router
+from tools.pdf_parser.pipeline import run_pipeline
 
 
 load_dotenv(override=True)
@@ -20,6 +22,8 @@ load_dotenv(override=True)
 MODEL = os.getenv("MODEL")
 BASE_URL = os.getenv("LLM_BASE_URL")
 API_KEY = os.getenv("OPENAI_API_KEY")
+
+TEMP_PATH = Path(os.getenv("TEMP_PATH"))
 
 OPENAI = OpenAI(
     base_url=BASE_URL,
@@ -141,7 +145,7 @@ def chat(
 
     print({
         "question": user_request.question[:100],
-        "use_rag": router_result.use_rag,
+        "route": router_result.route,
         "rewritten_query": (
             router_result.rewritten_query[:100]
             if router_result.rewritten_query
@@ -181,7 +185,52 @@ def chat(
     # PDF TRANSLATE
     #------------------------------------------------------------------
     elif router_result.route == "translate":
-        pass
+        if not user_request.file_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="No file  provided for translation"
+            )
+        for file_id in user_request.file_ids:
+            input_file = str(TEMP_PATH / file_id / "input.pdf")
+            output_file = str(TEMP_PATH / file_id / "output.pdf")
+
+            run_pipeline(
+                input_pdf=input_file,
+                output_pdf=output_file,
+                source_lang="english",
+                target_lang="indonesian"
+            )
+
+            # Save conversation
+        message_service.create_message(
+            db=db,
+            conversation_id=conversation.id,
+            role="user",
+            content=user_request.question,
+        )
+
+        message_service.create_message(
+            db=db,
+            conversation_id=conversation.id,
+            role="assistant",
+            content="Translation completed.",
+        )
+
+        generated_seconds = perf_counter() - total_started
+
+        print({
+            "history_seconds": round(history_seconds, 2),
+            "router_seconds": round(router_seconds, 2),
+            "retrieval_seconds": 0,
+            "llm_seconds": 0,
+            "generated_seconds": round(generated_seconds, 2),
+        })
+
+        return ChatResponse(
+            conversation_id=conversation.id,
+            answer="Translation completed.",
+            references=[]
+        )
 
         
 
